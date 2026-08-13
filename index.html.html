@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordenes de Trabajo Extra - Imagen y Espacios</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+        }
+        
+        .admin-btn {
+            background: rgba(255,255,255,0.3);
+            border: 1px solid white;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .admin-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .photo-box {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .photo-box:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .photo-box img {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .photo-box input {
+            display: none;
+        }
+        
+        .photo-label {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+        }
+        
+        .signature-box {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            margin-bottom: 16px;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            border-radius: 6px;
+            touch-action: none;
+        }
+        
+        .signature-actions {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            justify-content: center;
+        }
+        
+        .signature-actions button {
+            padding: 8px 16px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-clear {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background: #ff5252;
+        }
+        
+        .btn-submit {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: flex-end;
+        }
+        
+        .modal-content {
+            background: white;
+            width: 100%;
+            border-radius: 16px 16px 0 0;
+            padding: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .admin-section {
+            margin-bottom: 20px;
+        }
+        
+        .admin-section h3 {
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+        
+        .admin-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .admin-input-group input {
+            flex: 1;
+        }
+        
+        .admin-input-group button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        .admin-list {
+            background: #f9f9f9;
+            border-radius: 6px;
+            padding: 10px;
+        }
+        
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .admin-item button {
+            padding: 4px 12px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .pin-display {
+            background: #f0f4ff;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .sync-status {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        function App() {
+            const [screen, setScreen] = useState('login'); // login, form, admin
+            const [projects, setProjects] = useState([]);
+            const [installers, setInstallers] = useState([]);
+            const [currentInstaller, setCurrentInstaller] = useState(null);
+            const [pin, setPin] = useState('');
+            const [pinError, setPinError] = useState('');
+            const [syncStatus, setSyncStatus] = useState('');
+            
+            // Form fields
+            const [projectName, setProjectName] = useState('');
+            const [workType, setWorkType] = useState('Desbaste de vano');
+            const [description, setDescription] = useState('');
+            const [clientName, setClientName] = useState('');
+            const [photoBefore, setPhotoBefore] = useState(null);
+            const [photoAfter, setPhotoAfter] = useState(null);
+            const [selfie, setSelfie] = useState(null);
+            const [signatureData, setSignatureData] = useState(null);
+            const [formStatus, setFormStatus] = useState('');
+            
+            const canvasRef = useRef(null);
+            const isDrawing = useRef(false);
+            
+            // Load data from localStorage
+            useEffect(() => {
+                const savedProjects = JSON.parse(localStorage.getItem('projects') || '[]');
+                const savedInstallers = JSON.parse(localStorage.getItem('installers') || '[]');
+                setProjects(savedProjects);
+                setInstallers(savedInstallers);
+            }, []);
+            
+            // Initialize canvas for signature
+            useEffect(() => {
+                if (screen === 'form' && canvasRef.current && !signatureData) {
+                    const canvas = canvasRef.current;
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = rect.width * window.devicePixelRatio;
+                    canvas.height = rect.height * window.devicePixelRatio;
+                    const ctx = canvas.getContext('2d');
+                    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#333';
+                }
+            }, [screen, signatureData]);
+            
+            const handlePinLogin = () => {
+                const installer = installers.find(i => i.pin === pin);
+                if (installer) {
+                    setCurrentInstaller(installer);
+                    setPin('');
+                    setPinError('');
+                    setScreen('form');
+                } else {
+                    setPinError('PIN incorrecto');
+                    setPin('');
+                }
+            };
+            
+            const handlePhotoCapture = (type, event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        if (type === 'before') setPhotoBefore(e.target.result);
+                        if (type === 'after') setPhotoAfter(e.target.result);
+                        if (type === 'selfie') setSelfie(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            const handleCanvasMouseDown = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const ctx = canvas.getContext('2d');
+                isDrawing.current = true;
+                ctx.beginPath();
+                ctx.moveTo(
+                    (e.clientX - rect.left) * window.devicePixelRatio,
+                    (e.clientY - rect.top) * window.devicePixelRatio
+                );
+            };
+            
+            const handleCanvasMouseMove = (e) => {
+                if (!isDrawing.current) return;
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const ctx = canvas.getContext('2d');
+                ctx.lineTo(
+                    (e.clientX - rect.left) * window.devicePixelRatio,
+                    (e.clientY - rect.top) * window.devicePixelRatio
+                );
+                ctx.stroke();
+            };
+            
+            const handleCanvasMouseUp = () => {
+                isDrawing.current = false;
+                const canvas = canvasRef.current;
+                setSignatureData(canvas.toDataURL('image/png'));
+            };
+            
+            const handleCanvasTouchStart = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const ctx = canvas.getContext('2d');
+                const touch = e.touches[0];
+                isDrawing.current = true;
+                ctx.beginPath();
+                ctx.moveTo(
+                    (touch.clientX - rect.left) * window.devicePixelRatio,
+                    (touch.clientY - rect.top) * window.devicePixelRatio
+                );
+            };
+            
+            const handleCanvasTouchMove = (e) => {
+                if (!isDrawing.current) return;
+                e.preventDefault();
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const ctx = canvas.getContext('2d');
+                const touch = e.touches[0];
+                ctx.lineTo(
+                    (touch.clientX - rect.left) * window.devicePixelRatio,
+                    (touch.clientY - rect.top) * window.devicePixelRatio
+                );
+                ctx.stroke();
+            };
+            
+            const handleCanvasTouchEnd = () => {
+                isDrawing.current = false;
+                const canvas = canvasRef.current;
+                setSignatureData(canvas.toDataURL('image/png'));
+            };
+            
+            const clearSignature = () => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                setSignatureData(null);
+            };
+            
+            const handleSubmitForm = async () => {
+                if (!projectName || !workType || !description || !clientName || !photoBefore || !photoAfter || !selfie || !signatureData) {
+                    setFormStatus('error: Completa todos los campos');
+                    return;
+                }
+                
+                const order = {
+                    id: Date.now(),
+                    timestamp: new Date().toISOString(),
+                    installer: currentInstaller.name,
+                    project: projectName,
+                    workType: workType,
+                    description: description,
+                    clientName: clientName,
+                    photoBefore: photoBefore,
+                    photoAfter: photoAfter,
+                    selfie: selfie,
+                    signature: signatureData
+                };
+                
+                // Save locally
+                const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+                orders.push(order);
+                localStorage.setItem('orders', JSON.stringify(orders));
+                
+                setFormStatus('success: Orden guardada localmente');
+                
+                // Try to sync with Notion
+                setSyncStatus('Sincronizando...');
+                try {
+                    const response = await fetch('/api/sync-notion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(order)
+                    });
+                    
+                    if (response.ok) {
+                        setSyncStatus('✓ Sincronizado con Notion');
+                        setTimeout(() => setSyncStatus(''), 3000);
+                    }
+                } catch (error) {
+                    setSyncStatus('⚠ Sin conexión - se sincronizará después');
+                }
+                
+                // Reset form
+                setTimeout(() => {
+                    setProjectName('');
+                    setWorkType('Desbaste de vano');
+                    setDescription('');
+                    setClientName('');
+                    setPhotoBefore(null);
+                    setPhotoAfter(null);
+                    setSelfie(null);
+                    clearSignature();
+                    setFormStatus('');
+                }, 2000);
+            };
+            
+            // Admin functions
+            const handleAddProject = (newProject) => {
+                const updated = [...projects, newProject];
+                setProjects(updated);
+                localStorage.setItem('projects', JSON.stringify(updated));
+            };
+            
+            const handleDeleteProject = (index) => {
+                const updated = projects.filter((_, i) => i !== index);
+                setProjects(updated);
+                localStorage.setItem('projects', JSON.stringify(updated));
+            };
+            
+            const handleAddInstaller = (newInstaller) => {
+                const updated = [...installers, newInstaller];
+                setInstallers(updated);
+                localStorage.setItem('installers', JSON.stringify(updated));
+            };
+            
+            const handleDeleteInstaller = (index) => {
+                const updated = installers.filter((_, i) => i !== index);
+                setInstallers(updated);
+                localStorage.setItem('installers', JSON.stringify(updated));
+            };
+            
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>📋 Ordenes de Trabajo</h1>
+                        <button className="admin-btn" onClick={() => setScreen(screen === 'admin' ? 'login' : 'admin')}>
+                            {screen === 'admin' ? 'Cerrar' : 'Admin'}
+                        </button>
+                    </div>
+                    
+                    {screen === 'login' && (
+                        <LoginScreen
+                            pin={pin}
+                            setPin={setPin}
+                            pinError={pinError}
+                            onLogin={handlePinLogin}
+                        />
+                    )}
+                    
+                    {screen === 'form' && (
+                        <FormScreen
+                            installer={currentInstaller}
+                            projects={projects}
+                            projectName={projectName}
+                            setProjectName={setProjectName}
+                            workType={workType}
+                            setWorkType={setWorkType}
+                            description={description}
+                            setDescription={setDescription}
+                            clientName={clientName}
+                            setClientName={setClientName}
+                            photoBefore={photoBefore}
+                            photoAfter={photoAfter}
+                            selfie={selfie}
+                            handlePhotoCapture={handlePhotoCapture}
+                            signatureData={signatureData}
+                            canvasRef={canvasRef}
+                            handleCanvasMouseDown={handleCanvasMouseDown}
+                            handleCanvasMouseMove={handleCanvasMouseMove}
+                            handleCanvasMouseUp={handleCanvasMouseUp}
+                            handleCanvasTouchStart={handleCanvasTouchStart}
+                            handleCanvasTouchMove={handleCanvasTouchMove}
+                            handleCanvasTouchEnd={handleCanvasTouchEnd}
+                            clearSignature={clearSignature}
+                            handleSubmitForm={handleSubmitForm}
+                            formStatus={formStatus}
+                            syncStatus={syncStatus}
+                            onLogout={() => {
+                                setScreen('login');
+                                setCurrentInstaller(null);
+                            }}
+                        />
+                    )}
+                    
+                    {screen === 'admin' && (
+                        <AdminScreen
+                            projects={projects}
+                            installers={installers}
+                            onAddProject={handleAddProject}
+                            onDeleteProject={handleDeleteProject}
+                            onAddInstaller={handleAddInstaller}
+                            onDeleteInstaller={handleDeleteInstaller}
+                        />
+                    )}
+                </div>
+            );
+        }
+        
+        function LoginScreen({ pin, setPin, pinError, onLogin }) {
+            return (
+                <div style={{ marginTop: '40px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                        <h2 style={{ fontSize: '24px', marginBottom: '10px' }}>Bienvenido</h2>
+                        <p style={{ color: '#888', fontSize: '14px' }}>Ingresa tu PIN para comenzar</p>
+                    </div>
+                    
+                    <div className="form-group">
+                        <input
+                            type="password"
+                            placeholder="Ingresa tu PIN (4-6 dígitos)"
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && onLogin()}
+                            autoFocus
+                            maxLength="6"
+                            inputMode="numeric"
+                        />
+                    </div>
+                    
+                    {pinError && (
+                        <div className="status error" style={{ marginBottom: '16px' }}>
+                            ❌ {pinError}
+                        </div>
+                    )}
+                    
+                    <button className="btn-submit" onClick={onLogin}>
+                        Acceder
+                    </button>
+                </div>
+            );
+        }
+        
+        function FormScreen({
+            installer, projects, projectName, setProjectName, workType, setWorkType,
+            description, setDescription, clientName, setClientName, photoBefore, photoAfter,
+            selfie, handlePhotoCapture, signatureData, canvasRef, handleCanvasMouseDown,
+            handleCanvasMouseMove, handleCanvasMouseUp, handleCanvasTouchStart,
+            handleCanvasTouchMove, handleCanvasTouchEnd, clearSignature, handleSubmitForm,
+            formStatus, syncStatus, onLogout
+        }) {
+            return (
+                <div>
+                    <div style={{ marginBottom: '20px', padding: '12px', background: '#e3f2fd', borderRadius: '6px', fontSize: '14px' }}>
+                        👤 <strong>{installer.name}</strong>
+                        <button onClick={onLogout} style={{ float: 'right', background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: '12px' }}>
+                            Cerrar sesión
+                        </button>
+                    </div>
+                    
+                    {formStatus && (
+                        <div className={`status ${formStatus.includes('error') ? 'error' : 'success'}`} style={{ marginBottom: '16px' }}>
+                            {formStatus}
+                        </div>
+                    )}
+                    
+                    <div className="form-group">
+                        <label>Proyecto *</label>
+                        <select value={projectName} onChange={(e) => setProjectName(e.target.value)}>
+                            <option value="">Selecciona un proyecto</option>
+                            {projects.map((p, i) => (
+                                <option key={i} value={p}>{p}</option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Tipo de Trabajo *</label>
+                        <select value={workType} onChange={(e) => setWorkType(e.target.value)}>
+                            <option>Desbaste de vano</option>
+                            <option>Desbaste de Firme</option>
+                            <option>Ajuste de Herraje</option>
+                            <option>Suministro y Colocación de Herraje</option>
+                        </select>
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Descripción del Trabajo *</label>
+                        <textarea
+                            placeholder="Describe en detalle el trabajo realizado..."
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>Nombre de quien Autoriza *</label>
+                        <input
+                            type="text"
+                            placeholder="Nombre del residente, jefe de obra o superintendente"
+                            value={clientName}
+                            onChange={(e) => setClientName(e.target.value)}
+                        />
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>📸 Fotos *</label>
+                        <div className="photo-grid">
+                            <div className="photo-box" onClick={() => document.getElementById('photoBefore').click()}>
+                                {photoBefore ? (
+                                    <img src={photoBefore} alt="Antes" />
+                                ) : (
+                                    <div style={{ padding: '20px', color: '#999' }}>📷 Antes</div>
+                                )}
+                                <input
+                                    id="photoBefore"
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={(e) => handlePhotoCapture('before', e)}
+                                />
+                                <span className="photo-label">Foto ANTES</span>
+                            </div>
+                            
+                            <div className="photo-box" onClick={() => document.getElementById('photoAfter').click()}>
+                                {photoAfter ? (
+                                    <img src={photoAfter} alt="Después" />
+                                ) : (
+                                    <div style={{ padding: '20px', color: '#999' }}>📷 Después</div>
+                                )}
+                                <input
+                                    id="photoAfter"
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={(e) => handlePhotoCapture('after', e)}
+                                />
+                                <span className="photo-label">Foto DESPUÉS</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>🤳 Selfie (Prueba de quién captura) *</label>
+                        <div className="photo-box" onClick={() => document.getElementById('selfie').click()} style={{ cursor: 'pointer' }}>
+                            {selfie ? (
+                                <img src={selfie} alt="Selfie" />
+                            ) : (
+                                <div style={{ padding: '20px', color: '#999' }}>📱 Tu foto</div>
+                            )}
+                            <input
+                                id="selfie"
+                                type="file"
+                                accept="image/*"
+                                capture="user"
+                                onChange={(e) => handlePhotoCapture('selfie', e)}
+                            />
+                            <span className="photo-label">Tu foto (cámara frontal)</span>
+                        </div>
+                    </div>
+                    
+                    <div className="form-group">
+                        <label>✍️ Firma del Cliente *</label>
+                        <div className="signature-box">
+                            <canvas
+                                ref={canvasRef}
+                                onMouseDown={handleCanvasMouseDown}
+                                onMouseMove={handleCanvasMouseMove}
+                                onMouseUp={handleCanvasMouseUp}
+                                onTouchStart={handleCanvasTouchStart}
+                                onTouchMove={handleCanvasTouchMove}
+                                onTouchEnd={handleCanvasTouchEnd}
+                                style={{ height: '150px', cursor: 'crosshair' }}
+                            />
+                            <div className="signature-actions">
+                                <button className="btn-clear" onClick={clearSignature}>
+                                    Limpiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button className="btn-submit" onClick={handleSubmitForm}>
+                        💾 Guardar Orden de Trabajo
+                    </button>
+                    
+                    {syncStatus && (
+                        <div className="sync-status">
+                            {syncStatus.includes('Sincronizando') && <span className="spinner"></span>}
+                            {syncStatus}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        function AdminScreen({ projects, installers, onAddProject, onDeleteProject, onAddInstaller, onDeleteInstaller }) {
+            const [newProject, setNewProject] = useState('');
+            const [newInstallerName, setNewInstallerName] = useState('');
+            const [newInstallerPin, setNewInstallerPin] = useState('');
+            
+            return (
+                <div>
+                    <div className="admin-section">
+                        <h3>➕ Agregar Proyecto</h3>
+                        <div className="admin-input-group">
+                            <input
+                                type="text"
+                                placeholder="Nombre del proyecto"
+                                value={newProject}
+                                onChange={(e) => setNewProject(e.target.value)}
+                            />
+                            <button onClick={() => {
+                                if (newProject.trim()) {
+                                    onAddProject(newProject);
+                                    setNewProject('');
+                                }
+                            }}>
+                                Agregar
+                            </button>
+                        </div>
+                        <div className="admin-list">
+                            {projects.length === 0 ? (
+                                <p style={{ color: '#999', fontSize: '12px' }}>Sin proyectos aún</p>
+                            ) : (
+                                projects.map((p, i) => (
+                                    <div key={i} className="admin-item">
+                                        {p}
+                                        <button onClick={() => onDeleteProject(i)}>Eliminar</button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="admin-section">
+                        <h3>➕ Agregar Instalador</h3>
+                        <div className="admin-input-group">
+                            <input
+                                type="text"
+                                placeholder="Nombre"
+                                value={newInstallerName}
+                                onChange={(e) => setNewInstallerName(e.target.value)}
+                            />
+                            <input
+                                type="text"
+                                placeholder="PIN (4-6 dígitos)"
+                                value={newInstallerPin}
+                                onChange={(e) => setNewInstallerPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                maxLength="6"
+                                inputMode="numeric"
+                            />
+                            <button onClick={() => {
+                                if (newInstallerName.trim() && newInstallerPin.length >= 4) {
+                                    onAddInstaller({ name: newInstallerName, pin: newInstallerPin });
+                                    setNewInstallerName('');
+                                    setNewInstallerPin('');
+                                }
+                            }}>
+                                Agregar
+                            </button>
+                        </div>
+                        <div className="admin-list">
+                            {installers.length === 0 ? (
+                                <p style={{ color: '#999', fontSize: '12px' }}>Sin instaladores aún</p>
+                            ) : (
+                                installers.map((inst, i) => (
+                                    <div key={i} className="admin-item">
+                                        <span>{inst.name} <span className="pin-display">{inst.pin}</span></span>
+                                        <button onClick={() => onDeleteInstaller(i)}>Eliminar</button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
