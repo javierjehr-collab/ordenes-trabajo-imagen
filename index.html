@@ -187,50 +187,53 @@
             transform: translateY(0);
         }
         
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
         }
         
-        .modal.active {
-            display: flex;
-            align-items: flex-end;
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
         }
         
-        .modal-content {
-            background: white;
-            width: 100%;
-            border-radius: 16px 16px 0 0;
-            padding: 20px;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease-out;
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
         
-        @keyframes slideUp {
-            from {
-                transform: translateY(100%);
-            }
-            to {
-                transform: translateY(0);
-            }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
         }
         
-        .modal-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
+        .sync-status {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         .admin-section {
@@ -297,55 +300,6 @@
             font-weight: 600;
             color: #667eea;
         }
-        
-        .status {
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-        
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .sync-status {
-            font-size: 12px;
-            color: #888;
-            text-align: center;
-            margin-top: 10px;
-        }
-        
-        .spinner {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
@@ -354,14 +308,19 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         
+        // IDs de Notion
+        const NOTION_PROJECTS_DB = '3bbf3773fe218011a1d8fb05ff412a79';
+        const NOTION_INSTALLERS_DB = '3bbf3773fe218099921be85eb381dee6';
+        const NOTION_ORDERS_DB = '3bbf37773fe2180238b7c0d863344954515';
+        
         function App() {
-            const [screen, setScreen] = useState('login'); // login, form, admin
+            const [screen, setScreen] = useState('login');
             const [projects, setProjects] = useState([]);
             const [installers, setInstallers] = useState([]);
             const [currentInstaller, setCurrentInstaller] = useState(null);
             const [pin, setPin] = useState('');
             const [pinError, setPinError] = useState('');
-            const [syncStatus, setSyncStatus] = useState('');
+            const [loadingData, setLoadingData] = useState(true);
             
             // Form fields
             const [projectName, setProjectName] = useState('');
@@ -373,33 +332,50 @@
             const [selfie, setSelfie] = useState(null);
             const [signatureData, setSignatureData] = useState(null);
             const [formStatus, setFormStatus] = useState('');
+            const [syncStatus, setSyncStatus] = useState('');
             
             const canvasRef = useRef(null);
             const isDrawing = useRef(false);
             
-            // Load data from localStorage
+            // Cargar proyectos e instaladores desde Notion
             useEffect(() => {
-                const savedProjects = JSON.parse(localStorage.getItem('projects') || '[]');
-                const savedInstallers = JSON.parse(localStorage.getItem('installers') || '[]');
-                setProjects(savedProjects);
-                setInstallers(savedInstallers);
+                loadDataFromNotion();
             }, []);
             
-            // Initialize canvas for signature
-            useEffect(() => {
-                if (screen === 'form' && canvasRef.current && !signatureData) {
-                    const canvas = canvasRef.current;
-                    const rect = canvas.getBoundingClientRect();
-                    canvas.width = rect.width * window.devicePixelRatio;
-                    canvas.height = rect.height * window.devicePixelRatio;
-                    const ctx = canvas.getContext('2d');
-                    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = '#333';
+            const loadDataFromNotion = async () => {
+                try {
+                    setLoadingData(true);
+                    
+                    // Cargar proyectos
+                    const projectsRes = await fetch('/api/load-notion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ databaseId: NOTION_PROJECTS_DB })
+                    });
+                    
+                    if (projectsRes.ok) {
+                        const projectsData = await projectsRes.json();
+                        const projectNames = projectsData.data.map(p => p.nombre);
+                        setProjects(projectNames);
+                    }
+                    
+                    // Cargar instaladores
+                    const installersRes = await fetch('/api/load-notion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ databaseId: NOTION_INSTALLERS_DB })
+                    });
+                    
+                    if (installersRes.ok) {
+                        const installersData = await installersRes.json();
+                        setInstallers(installersData.data);
+                    }
+                } catch (error) {
+                    console.error('Error loading from Notion:', error);
+                } finally {
+                    setLoadingData(false);
                 }
-            }, [screen, signatureData]);
+            };
             
             const handlePinLogin = () => {
                 const installer = installers.find(i => i.pin === pin);
@@ -426,6 +402,21 @@
                     reader.readAsDataURL(file);
                 }
             };
+            
+            useEffect(() => {
+                if (screen === 'form' && canvasRef.current && !signatureData) {
+                    const canvas = canvasRef.current;
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = rect.width * window.devicePixelRatio;
+                    canvas.height = rect.height * window.devicePixelRatio;
+                    const ctx = canvas.getContext('2d');
+                    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#333';
+                }
+            }, [screen, signatureData]);
             
             const handleCanvasMouseDown = (e) => {
                 const canvas = canvasRef.current;
@@ -504,9 +495,8 @@
                 }
                 
                 const order = {
-                    id: Date.now(),
                     timestamp: new Date().toISOString(),
-                    installer: currentInstaller.name,
+                    installer: currentInstaller.nombre,
                     project: projectName,
                     workType: workType,
                     description: description,
@@ -517,14 +507,8 @@
                     signature: signatureData
                 };
                 
-                // Save locally
-                const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-                orders.push(order);
-                localStorage.setItem('orders', JSON.stringify(orders));
-                
                 setFormStatus('success: Orden guardada localmente');
                 
-                // Try to sync with Notion
                 setSyncStatus('Sincronizando...');
                 try {
                     const response = await fetch('/api/sync-notion', {
@@ -541,7 +525,6 @@
                     setSyncStatus('⚠ Sin conexión - se sincronizará después');
                 }
                 
-                // Reset form
                 setTimeout(() => {
                     setProjectName('');
                     setWorkType('Desbaste de vano');
@@ -555,30 +538,48 @@
                 }, 2000);
             };
             
-            // Admin functions
-            const handleAddProject = (newProject) => {
-                const updated = [...projects, newProject];
-                setProjects(updated);
-                localStorage.setItem('projects', JSON.stringify(updated));
+            const handleAddProject = async (newProject) => {
+                try {
+                    await fetch('/api/add-notion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            databaseId: NOTION_PROJECTS_DB,
+                            data: { nombre: newProject }
+                        })
+                    });
+                    
+                    setProjects([...projects, newProject]);
+                } catch (error) {
+                    console.error('Error adding project:', error);
+                }
             };
             
-            const handleDeleteProject = (index) => {
-                const updated = projects.filter((_, i) => i !== index);
-                setProjects(updated);
-                localStorage.setItem('projects', JSON.stringify(updated));
+            const handleAddInstaller = async (name, pin) => {
+                try {
+                    await fetch('/api/add-notion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            databaseId: NOTION_INSTALLERS_DB,
+                            data: { nombre: name, pin: pin }
+                        })
+                    });
+                    
+                    setInstallers([...installers, { nombre: name, pin: pin }]);
+                } catch (error) {
+                    console.error('Error adding installer:', error);
+                }
             };
             
-            const handleAddInstaller = (newInstaller) => {
-                const updated = [...installers, newInstaller];
-                setInstallers(updated);
-                localStorage.setItem('installers', JSON.stringify(updated));
-            };
-            
-            const handleDeleteInstaller = (index) => {
-                const updated = installers.filter((_, i) => i !== index);
-                setInstallers(updated);
-                localStorage.setItem('installers', JSON.stringify(updated));
-            };
+            if (loadingData) {
+                return (
+                    <div className="container" style={{ marginTop: '50px', textAlign: 'center' }}>
+                        <div className="spinner" style={{ margin: '0 auto', marginBottom: '10px' }}></div>
+                        <p>Cargando configuración...</p>
+                    </div>
+                );
+            }
             
             return (
                 <div className="container">
@@ -638,9 +639,8 @@
                             projects={projects}
                             installers={installers}
                             onAddProject={handleAddProject}
-                            onDeleteProject={handleDeleteProject}
                             onAddInstaller={handleAddInstaller}
-                            onDeleteInstaller={handleDeleteInstaller}
+                            onReload={loadDataFromNotion}
                         />
                     )}
                 </div>
@@ -692,7 +692,7 @@
             return (
                 <div>
                     <div style={{ marginBottom: '20px', padding: '12px', background: '#e3f2fd', borderRadius: '6px', fontSize: '14px' }}>
-                        👤 <strong>{installer.name}</strong>
+                        👤 <strong>{installer.nombre}</strong>
                         <button onClick={onLogout} style={{ float: 'right', background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: '12px' }}>
                             Cerrar sesión
                         </button>
@@ -834,13 +834,19 @@
             );
         }
         
-        function AdminScreen({ projects, installers, onAddProject, onDeleteProject, onAddInstaller, onDeleteInstaller }) {
+        function AdminScreen({ projects, installers, onAddProject, onAddInstaller, onReload }) {
             const [newProject, setNewProject] = useState('');
             const [newInstallerName, setNewInstallerName] = useState('');
             const [newInstallerPin, setNewInstallerPin] = useState('');
             
             return (
                 <div>
+                    <div style={{ marginBottom: '20px' }}>
+                        <button className="btn-submit" onClick={onReload} style={{ marginBottom: '20px' }}>
+                            🔄 Recargar desde Notion
+                        </button>
+                    </div>
+                    
                     <div className="admin-section">
                         <h3>➕ Agregar Proyecto</h3>
                         <div className="admin-input-group">
@@ -866,7 +872,6 @@
                                 projects.map((p, i) => (
                                     <div key={i} className="admin-item">
                                         {p}
-                                        <button onClick={() => onDeleteProject(i)}>Eliminar</button>
                                     </div>
                                 ))
                             )}
@@ -892,7 +897,7 @@
                             />
                             <button onClick={() => {
                                 if (newInstallerName.trim() && newInstallerPin.length >= 4) {
-                                    onAddInstaller({ name: newInstallerName, pin: newInstallerPin });
+                                    onAddInstaller(newInstallerName, newInstallerPin);
                                     setNewInstallerName('');
                                     setNewInstallerPin('');
                                 }
@@ -906,8 +911,7 @@
                             ) : (
                                 installers.map((inst, i) => (
                                     <div key={i} className="admin-item">
-                                        <span>{inst.name} <span className="pin-display">{inst.pin}</span></span>
-                                        <button onClick={() => onDeleteInstaller(i)}>Eliminar</button>
+                                        <span>{inst.nombre} <span className="pin-display">{inst.pin}</span></span>
                                     </div>
                                 ))
                             )}
