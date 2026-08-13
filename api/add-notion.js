@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     }
     
     const { databaseId, data } = req.body;
-    const notionToken = process.env.NOTION_TOKEN;
+    const notionToken = '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';
     
     if (!notionToken || !databaseId) {
         return res.status(500).json({ error: 'Missing Notion credentials' });
