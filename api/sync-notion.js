@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     }
     
     const { order } = req.body;
-    const notionToken = process.env.NOTION_TOKEN;
+    const notionToken = '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';
     const databaseId = process.env.NOTION_DATABASE_ID;
     
     if (!notionToken || !databaseId) {
