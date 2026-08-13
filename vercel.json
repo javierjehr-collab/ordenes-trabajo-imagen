@@ -8,6 +8,14 @@
     {
       "src": "api/sync-notion.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/load-notion.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/add-notion.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
