@@ -7,10 +7,11 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 10px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 10px 10px 40px; }
         .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { font-size: 18px; }
         .admin-btn { background: rgba(255,255,255,0.3); border: 1px solid white; color: white; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 12px; }
@@ -19,418 +20,593 @@
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; font-family: inherit; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
         textarea { resize: vertical; min-height: 80px; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-        .photo-box { border: 2px dashed #ddd; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; background: white; }
-        .photo-box:hover { border-color: #667eea; background: #f0f4ff; }
-        .photo-box img { max-width: 100%; max-height: 150px; border-radius: 6px; margin-bottom: 8px; }
-        .photo-box input { display: none; }
-        .photo-label { display: block; font-size: 12px; color: #888; margin-top: 8px; }
-        .signature-box { border: 2px solid #ddd; border-radius: 8px; background: white; margin-bottom: 16px; }
-        canvas { display: block; width: 100%; border-radius: 6px; touch-action: none; }
-        .signature-actions { display: flex; gap: 10px; padding: 10px; justify-content: center; }
-        .btn-clear { background: #ff6b6b; color: white; padding: 8px 16px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-submit { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; }
+
+        /* Fotos */
+        .photos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+        .photo-thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #eee; }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-thumb .delete-btn { position: absolute; top: 4px; right: 4px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+        .add-photo-btn { aspect-ratio: 1; border: 2px dashed #aaa; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: white; color: #888; font-size: 12px; gap: 4px; }
+        .add-photo-btn:hover { border-color: #667eea; color: #667eea; background: #f0f4ff; }
+        .add-photo-btn span { font-size: 24px; }
+
+        /* Firma */
+        .signature-wrap { border: 2px solid #ddd; border-radius: 8px; background: white; overflow: hidden; }
+        .signature-wrap canvas { display: block; width: 100%; height: 160px; cursor: crosshair; touch-action: none; }
+        .sig-actions { display: flex; gap: 10px; padding: 8px 12px; border-top: 1px solid #eee; }
+        .sig-hint { flex: 1; font-size: 12px; color: #aaa; align-self: center; }
+        .btn-clear { background: #ff6b6b; color: white; padding: 6px 14px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; }
+
+        /* Botones */
+        .btn-submit { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px; }
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-pdf { background: #28a745; color: white; padding: 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; }
+
+        /* Status */
         .status { padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
         .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .sync-status { font-size: 12px; color: #888; text-align: center; margin-top: 10px; }
-        .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #f3f3f3; border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 6px; vertical-align: middle; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .admin-section { margin-bottom: 20px; }
-        .admin-section h3 { margin-bottom: 12px; color: #667eea; }
-        .admin-input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+
+        /* Spinner */
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Admin */
+        .admin-section { margin-bottom: 24px; }
+        .admin-section h3 { margin-bottom: 10px; color: #667eea; font-size: 16px; }
+        .admin-input-group { display: flex; gap: 8px; margin-bottom: 10px; }
         .admin-input-group input { flex: 1; }
-        .admin-input-group button { padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; }
-        .admin-list { background: #f9f9f9; border-radius: 6px; padding: 10px; }
-        .admin-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; margin-bottom: 8px; border-radius: 4px; font-size: 14px; }
-        .pin-display { background: #f0f4ff; padding: 4px 8px; border-radius: 3px; font-family: monospace; font-weight: 600; color: #667eea; }
+        .admin-input-group button { padding: 8px 14px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 14px; }
+        .admin-list { background: #f9f9f9; border-radius: 6px; padding: 8px; }
+        .admin-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: white; margin-bottom: 6px; border-radius: 4px; font-size: 14px; }
+        .pin-badge { background: #f0f4ff; padding: 3px 8px; border-radius: 3px; font-family: monospace; font-weight: 600; color: #667eea; font-size: 13px; }
+
+        /* Confirmación */
+        .confirm-card { background: white; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .confirm-icon { font-size: 64px; margin-bottom: 16px; }
+        .confirm-card h2 { color: #28a745; margin-bottom: 8px; }
+        .confirm-card p { color: #666; font-size: 14px; margin-bottom: 20px; }
+        .confirm-details { background: #f8f9fa; border-radius: 8px; padding: 16px; text-align: left; margin-bottom: 20px; font-size: 14px; }
+        .confirm-details div { margin-bottom: 6px; }
+        .confirm-details strong { color: #333; }
     </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhiMjpUIgPfBA6nNMrVsAJ9mXy9BZRjvk7UlyailHAZTagKKk0gx5a3rARz5ZHyO5L/exec';
+const { useState, useEffect, useRef, useCallback } = React;
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhiMjpUIgPfBA6nNMrVsAJ9mXy9BZRjvk7UlyailHAZTagKKk0gx5a3rARz5ZHyO5L/exec';
+const ADMIN_PIN = '9107';
 
-    async function callScript(action, data = {}) {
-        const response = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ action, ...data })
-        });
-        return await response.json();
-    }
+async function callScript(action, data = {}) {
+    const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action, ...data })
+    });
+    return res.json();
+}
 
-    function App() {
-        const [screen, setScreen] = useState('login');
-        const [projects, setProjects] = useState([]);
-        const [installers, setInstallers] = useState([]);
-        const [currentInstaller, setCurrentInstaller] = useState(null);
-        const [pin, setPin] = useState('');
-        const [pinError, setPinError] = useState('');
-        const [loadingData, setLoadingData] = useState(true);
-        const [projectName, setProjectName] = useState('');
-        const [workType, setWorkType] = useState('Desbaste de vano');
-        const [description, setDescription] = useState('');
-        const [clientName, setClientName] = useState('');
-        const [photoBefore, setPhotoBefore] = useState(null);
-        const [photoAfter, setPhotoAfter] = useState(null);
-        const [selfie, setSelfie] = useState(null);
-        const [signatureData, setSignatureData] = useState(null);
-        const [formStatus, setFormStatus] = useState('');
-        const [syncStatus, setSyncStatus] = useState('');
-        const [submitting, setSubmitting] = useState(false);
-        const canvasRef = useRef(null);
-        const isDrawing = useRef(false);
-
-        useEffect(() => { loadData(); }, []);
-
-        const loadData = async () => {
-            setLoadingData(true);
-            try {
-                const [projRes, instRes] = await Promise.all([
-                    callScript('getProjects'),
-                    callScript('getInstallers')
-                ]);
-                if (projRes.success) setProjects(projRes.data.map(p => p.nombre));
-                if (instRes.success) setInstallers(instRes.data);
-            } catch (e) {
-                console.error('Error cargando datos:', e);
-            }
-            setLoadingData(false);
-        };
-
-        const handlePinLogin = () => {
-            if (pin === '9107') {
-                setPin(''); setPinError(''); setScreen('admin');
-                return;
-            }
-            const installer = installers.find(i => String(i.pin) === String(pin));
-            if (installer) {
-                setCurrentInstaller(installer);
-                setPin(''); setPinError(''); setScreen('form');
-            } else {
-                setPinError('PIN incorrecto'); setPin('');
-            }
-        };
-
-        const handlePhotoCapture = (type, event) => {
-            const file = event.target.files[0];
-            if (file) {
-                // Comprimir imagen antes de guardar
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX = 800;
-                        let w = img.width, h = img.height;
-                        if (w > h && w > MAX) { h = h * MAX / w; w = MAX; }
-                        else if (h > MAX) { w = w * MAX / h; h = MAX; }
-                        canvas.width = w; canvas.height = h;
-                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        const compressed = canvas.toDataURL('image/jpeg', 0.7);
-                        if (type === 'before') setPhotoBefore(compressed);
-                        if (type === 'after') setPhotoAfter(compressed);
-                        if (type === 'selfie') setSelfie(compressed);
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
-        useEffect(() => {
-            if (screen === 'form' && canvasRef.current && !signatureData) {
-                const canvas = canvasRef.current;
-                const rect = canvas.getBoundingClientRect();
-                canvas.width = rect.width * window.devicePixelRatio;
-                canvas.height = rect.height * window.devicePixelRatio;
-                const ctx = canvas.getContext('2d');
-                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-                ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-                ctx.lineWidth = 2; ctx.strokeStyle = '#333';
-            }
-        }, [screen, signatureData]);
-
-        const getPos = (e, canvas) => {
-            const rect = canvas.getBoundingClientRect();
-            const src = e.touches ? e.touches[0] : e;
-            return {
-                x: (src.clientX - rect.left) * window.devicePixelRatio,
-                y: (src.clientY - rect.top) * window.devicePixelRatio
+function compressImage(file, maxSize = 900, quality = 0.72) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
+                else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
             };
+            img.src = e.target.result;
         };
+        reader.readAsDataURL(file);
+    });
+}
 
-        const startDraw = (e) => {
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-            const pos = getPos(e, canvas);
-            isDrawing.current = true;
-            ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
-        };
+function generatePDF(orderData) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 20;
 
-        const draw = (e) => {
-            if (!isDrawing.current) return;
-            if (e.touches) e.preventDefault();
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-            const pos = getPos(e, canvas);
-            ctx.lineTo(pos.x, pos.y); ctx.stroke();
-        };
+    // Header
+    doc.setFillColor(102, 126, 234);
+    doc.rect(0, 0, pageW, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ORDEN DE TRABAJO EXTRA', pageW / 2, 15, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Imagen y Espacios, S.A. de C.V.', pageW / 2, 25, { align: 'center' });
+    y = 50;
 
-        const endDraw = () => {
-            isDrawing.current = false;
-            setSignatureData(canvasRef.current.toDataURL('image/png'));
-        };
+    // Folio y fecha
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Folio: OT-${Date.now().toString().slice(-6)}`, 15, y);
+    doc.text(`Fecha: ${new Date(orderData.timestamp).toLocaleString('es-MX')}`, pageW - 15, y, { align: 'right' });
+    y += 15;
 
-        const clearSignature = () => {
-            const canvas = canvasRef.current;
-            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-            setSignatureData(null);
-        };
+    // Línea separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.line(15, y, pageW - 15, y);
+    y += 10;
 
-        const handleSubmit = async () => {
-            if (!projectName || !workType || !description || !clientName || !photoBefore || !photoAfter || !selfie || !signatureData) {
-                setFormStatus('error: Completa todos los campos y firma');
-                return;
+    // Datos principales
+    const fields = [
+        ['Proyecto', orderData.project],
+        ['Tipo de Trabajo', orderData.workType],
+        ['Instalador', orderData.installer],
+        ['Autoriza', orderData.clientName],
+    ];
+    fields.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text(`${label}:`, 15, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value || '-', 60, y);
+        y += 10;
+    });
+
+    // Descripción
+    y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Descripción del Trabajo:', 15, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const descLines = doc.splitTextToSize(orderData.description, pageW - 30);
+    doc.text(descLines, 15, y);
+    y += descLines.length * 6 + 10;
+
+    // Fotos
+    if (orderData.photos && orderData.photos.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Evidencia Fotográfica:', 15, y);
+        y += 8;
+
+        const photoW = 55;
+        const photoH = 45;
+        const cols = 3;
+        const gap = 5;
+        const startX = 15;
+
+        orderData.photos.forEach((photo, idx) => {
+            if (!photo) return;
+            const col = idx % cols;
+            const row = Math.floor(idx / cols);
+            const x = startX + col * (photoW + gap);
+            const py = y + row * (photoH + gap);
+
+            if (py + photoH > 270) {
+                doc.addPage();
+                y = 20;
             }
-            setSubmitting(true);
-            setSyncStatus('Guardando orden...');
+
             try {
-                const result = await callScript('saveOrder', {
-                    timestamp: new Date().toISOString(),
-                    installer: currentInstaller.nombre,
-                    project: projectName,
-                    workType, description, clientName,
-                    photoBefore, photoAfter, selfie,
-                    signature: signatureData
-                });
-                if (result.success) {
-                    setFormStatus('success: ¡Orden guardada correctamente!');
-                    setSyncStatus('✓ Sincronizado con Google Sheets');
-                    setTimeout(() => {
-                        setProjectName(''); setWorkType('Desbaste de vano');
-                        setDescription(''); setClientName('');
-                        setPhotoBefore(null); setPhotoAfter(null); setSelfie(null);
-                        clearSignature(); setFormStatus(''); setSyncStatus('');
-                    }, 3000);
-                } else {
-                    setFormStatus('error: Error al guardar, intenta de nuevo');
-                    setSyncStatus('');
-                }
-            } catch (e) {
-                setFormStatus('error: Sin conexión, intenta de nuevo');
-                setSyncStatus('');
+                doc.addImage(photo, 'JPEG', x, py, photoW, photoH);
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(x, py, photoW, photoH);
+                doc.setFontSize(7);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Foto ${idx + 1}`, x + photoW / 2, py + photoH + 4, { align: 'center' });
+                doc.setTextColor(0, 0, 0);
+            } catch (e) {}
+        });
+
+        const totalRows = Math.ceil(orderData.photos.length / cols);
+        y += totalRows * (photoH + gap) + 15;
+    }
+
+    // Firma
+    if (orderData.signature) {
+        if (y > 220) { doc.addPage(); y = 20; }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Firma de Autorización:', 15, y);
+        y += 8;
+        try {
+            doc.addImage(orderData.signature, 'PNG', 15, y, 80, 35);
+        } catch (e) {}
+        y += 40;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setDrawColor(0);
+        doc.line(15, y, 95, y);
+        y += 5;
+        doc.text(orderData.clientName, 15, y);
+        doc.text('Firma y Nombre de quien Autoriza', 15, y + 5);
+    }
+
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Imagen y Espacios S.A. de C.V. | Página ${i} de ${pageCount}`, pageW / 2, 290, { align: 'center' });
+    }
+
+    doc.save(`OT_${orderData.project}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// ── Componente Firma ──────────────────────────────────────────────
+function SignaturePad({ onSign }) {
+    const canvasRef = useRef(null);
+    const drawing = useRef(false);
+    const [signed, setSigned] = useState(false);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const resize = () => {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.lineWidth = 2.5; ctx.strokeStyle = '#1a1a2e';
+        };
+        resize();
+    }, []);
+
+    const getXY = (e, canvas) => {
+        const rect = canvas.getBoundingClientRect();
+        const src = e.touches ? e.touches[0] : e;
+        return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+    };
+
+    const start = useCallback((e) => {
+        e.preventDefault();
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const { x, y } = getXY(e, canvas);
+        drawing.current = true;
+        ctx.beginPath(); ctx.moveTo(x, y);
+    }, []);
+
+    const move = useCallback((e) => {
+        if (!drawing.current) return;
+        e.preventDefault();
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const { x, y } = getXY(e, canvas);
+        ctx.lineTo(x, y); ctx.stroke();
+    }, []);
+
+    const end = useCallback((e) => {
+        if (!drawing.current) return;
+        e.preventDefault();
+        drawing.current = false;
+        setSigned(true);
+        onSign(canvasRef.current.toDataURL('image/png'));
+    }, [onSign]);
+
+    const clear = () => {
+        const canvas = canvasRef.current;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.getContext('2d').clearRect(0, 0, canvas.width / dpr * dpr, canvas.height / dpr * dpr);
+        setSigned(false);
+        onSign(null);
+    };
+
+    return (
+        <div className="signature-wrap">
+            <canvas ref={canvasRef}
+                onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+                onTouchStart={start} onTouchMove={move} onTouchEnd={end}
+            />
+            <div className="sig-actions">
+                <span className="sig-hint">{signed ? '✓ Firma capturada' : 'Firmar con el dedo aquí'}</span>
+                <button className="btn-clear" onClick={clear}>Limpiar</button>
+            </div>
+        </div>
+    );
+}
+
+// ── App principal ─────────────────────────────────────────────────
+function App() {
+    const [screen, setScreen] = useState('login'); // login | form | admin | confirm
+    const [projects, setProjects] = useState([]);
+    const [installers, setInstallers] = useState([]);
+    const [currentInstaller, setCurrentInstaller] = useState(null);
+    const [pin, setPin] = useState('');
+    const [pinError, setPinError] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    // Formulario
+    const [projectName, setProjectName] = useState('');
+    const [workType, setWorkType] = useState('Desbaste de vano');
+    const [description, setDescription] = useState('');
+    const [clientName, setClientName] = useState('');
+    const [photos, setPhotos] = useState([]);
+    const [signature, setSignature] = useState(null);
+    const [formError, setFormError] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [syncMsg, setSyncMsg] = useState('');
+    const [lastOrder, setLastOrder] = useState(null);
+
+    useEffect(() => { loadData(); }, []);
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const [p, i] = await Promise.all([callScript('getProjects'), callScript('getInstallers')]);
+            if (p.success) setProjects(p.data.map(x => x.nombre));
+            if (i.success) setInstallers(i.data);
+        } catch(e) { console.error(e); }
+        setLoading(false);
+    };
+
+    const handleLogin = () => {
+        if (pin === ADMIN_PIN) { setPin(); setScreen('admin'); return; }
+        const inst = installers.find(i => String(i.pin) === String(pin));
+        if (inst) { setCurrentInstaller(inst); setPin(''); setPinError(''); setScreen('form'); }
+        else { setPinError('PIN incorrecto'); setPin(''); }
+    };
+
+    const addPhoto = async (e) => {
+        const files = Array.from(e.target.files);
+        if (photos.length + files.length > 10) {
+            alert('Máximo 10 fotos'); return;
+        }
+        const compressed = await Promise.all(files.map(f => compressImage(f)));
+        setPhotos(prev => [...prev, ...compressed]);
+        e.target.value = '';
+    };
+
+    const removePhoto = (idx) => setPhotos(prev => prev.filter((_, i) => i !== idx));
+
+    const resetForm = () => {
+        setProjectName(''); setWorkType('Desbaste de vano');
+        setDescription(''); setClientName('');
+        setPhotos([]); setSignature(null);
+        setFormError(''); setSyncMsg('');
+    };
+
+    const handleSubmit = async () => {
+        if (!projectName || !description || !clientName || photos.length === 0 || !signature) {
+            setFormError('Completa todos los campos, agrega al menos 1 foto y firma.');
+            return;
+        }
+        setSubmitting(true); setFormError(''); setSyncMsg('Guardando...');
+        try {
+            const orderData = {
+                timestamp: new Date().toISOString(),
+                installer: currentInstaller.nombre,
+                project: projectName, workType, description, clientName,
+                photos, signature
+            };
+            const res = await callScript('saveOrder', orderData);
+            if (res.success) {
+                setLastOrder(orderData);
+                setSyncMsg('');
+                setScreen('confirm');
+                resetForm();
+            } else {
+                setFormError('Error al guardar. Intenta de nuevo.');
+                setSyncMsg('');
             }
-            setSubmitting(false);
-        };
+        } catch(e) {
+            setFormError('Sin conexión. Intenta de nuevo.');
+            setSyncMsg('');
+        }
+        setSubmitting(false);
+    };
 
-        const handleAddProject = async (nombre) => {
-            await callScript('addProject', { nombre });
-            setProjects([...projects, nombre]);
-        };
+    if (loading) return (
+        <div style={{ textAlign: 'center', marginTop: 80 }}>
+            <div className="spinner" style={{ width: 32, height: 32, borderColor: '#ddd', borderTopColor: '#667eea', margin: '0 auto 16px', display: 'block' }}></div>
+            <p style={{ color: '#888' }}>Cargando...</p>
+        </div>
+    );
 
-        const handleAddInstaller = async (nombre, pin) => {
-            await callScript('addInstaller', { nombre, pin });
-            setInstallers([...installers, { nombre, pin }]);
-        };
-
-        if (loadingData) return (
-            <div className="container" style={{ marginTop: '80px', textAlign: 'center' }}>
-                <div className="spinner" style={{ width: 30, height: 30, borderWidth: 3, margin: '0 auto 16px' }}></div>
-                <p>Cargando configuración...</p>
-            </div>
-        );
-
-        return (
-            <div className="container">
-                <div className="header">
-                    <h1>📋 Ordenes de Trabajo</h1>
-                    {screen === 'admin' && (
-                        <button className="admin-btn" onClick={() => setScreen('login')}>
-                            Cerrar
-                        </button>
-                    )}
-                </div>
-
-                {screen === 'login' && (
-                    <div style={{ marginTop: 40 }}>
-                        <div style={{ textAlign: 'center', marginBottom: 30 }}>
-                            <h2 style={{ fontSize: 24, marginBottom: 10 }}>Bienvenido</h2>
-                            <p style={{ color: '#888', fontSize: 14 }}>Ingresa tu PIN para comenzar</p>
-                        </div>
-                        <div className="form-group">
-                            <input type="password" placeholder="Ingresa tu PIN (4-6 dígitos)"
-                                value={pin} onChange={e => setPin(e.target.value)}
-                                onKeyPress={e => e.key === 'Enter' && handlePinLogin()}
-                                maxLength="6" inputMode="numeric" autoFocus />
-                        </div>
-                        {pinError && <div className="status error" style={{ marginBottom: 16 }}>❌ {pinError}</div>}
-                        <button className="btn-submit" onClick={handlePinLogin}>Acceder</button>
-                    </div>
-                )}
-
-                {screen === 'form' && (
-                    <div>
-                        <div style={{ marginBottom: 20, padding: 12, background: '#e3f2fd', borderRadius: 6, fontSize: 14 }}>
-                            👤 <strong>{currentInstaller.nombre}</strong>
-                            <button onClick={() => { setScreen('login'); setCurrentInstaller(null); }}
-                                style={{ float: 'right', background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: 12 }}>
-                                Cerrar sesión
-                            </button>
-                        </div>
-
-                        {formStatus && (
-                            <div className={`status ${formStatus.includes('error') ? 'error' : 'success'}`} style={{ marginBottom: 16 }}>
-                                {formStatus.replace('error: ', '').replace('success: ', '')}
-                            </div>
-                        )}
-
-                        <div className="form-group">
-                            <label>Proyecto *</label>
-                            <select value={projectName} onChange={e => setProjectName(e.target.value)}>
-                                <option value="">Selecciona un proyecto</option>
-                                {projects.map((p, i) => <option key={i} value={p}>{p}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label>Tipo de Trabajo *</label>
-                            <select value={workType} onChange={e => setWorkType(e.target.value)}>
-                                <option>Desbaste de vano</option>
-                                <option>Desbaste de Firme</option>
-                                <option>Ajuste de Herraje</option>
-                                <option>Suministro y Colocación de Herraje</option>
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label>Descripción del Trabajo *</label>
-                            <textarea placeholder="Describe en detalle el trabajo realizado..."
-                                value={description} onChange={e => setDescription(e.target.value)} />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Nombre de quien Autoriza *</label>
-                            <input type="text" placeholder="Residente, jefe de obra o superintendente"
-                                value={clientName} onChange={e => setClientName(e.target.value)} />
-                        </div>
-
-                        <div className="form-group">
-                            <label>📸 Fotos *</label>
-                            <div className="photo-grid">
-                                <div className="photo-box" onClick={() => document.getElementById('photoBefore').click()}>
-                                    {photoBefore ? <img src={photoBefore} alt="Antes" /> : <div style={{ padding: 20, color: '#999' }}>📷</div>}
-                                    <input id="photoBefore" type="file" accept="image/*" capture="environment"
-                                        onChange={e => handlePhotoCapture('before', e)} />
-                                    <span className="photo-label">Foto ANTES</span>
-                                </div>
-                                <div className="photo-box" onClick={() => document.getElementById('photoAfter').click()}>
-                                    {photoAfter ? <img src={photoAfter} alt="Después" /> : <div style={{ padding: 20, color: '#999' }}>📷</div>}
-                                    <input id="photoAfter" type="file" accept="image/*" capture="environment"
-                                        onChange={e => handlePhotoCapture('after', e)} />
-                                    <span className="photo-label">Foto DESPUÉS</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label>🤳 Selfie (prueba de quién captura) *</label>
-                            <div className="photo-box" onClick={() => document.getElementById('selfie').click()}>
-                                {selfie ? <img src={selfie} alt="Selfie" /> : <div style={{ padding: 20, color: '#999' }}>📱 Tu foto</div>}
-                                <input id="selfie" type="file" accept="image/*" capture="user"
-                                    onChange={e => handlePhotoCapture('selfie', e)} />
-                                <span className="photo-label">Cámara frontal</span>
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label>✍️ Firma del Cliente *</label>
-                            <div className="signature-box">
-                                <canvas ref={canvasRef}
-                                    onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw}
-                                    onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
-                                    style={{ height: 150, cursor: 'crosshair' }} />
-                                <div className="signature-actions">
-                                    <button className="btn-clear" onClick={clearSignature}>Limpiar</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button className="btn-submit" onClick={handleSubmit} disabled={submitting}>
-                            {submitting ? <><span className="spinner"></span>Guardando...</> : '💾 Guardar Orden de Trabajo'}
-                        </button>
-
-                        {syncStatus && <div className="sync-status">{syncStatus}</div>}
-                    </div>
-                )}
-
+    return (
+        <div className="container">
+            <div className="header">
+                <h1>📋 Ordenes de Trabajo</h1>
                 {screen === 'admin' && (
-                    <div>
-                        <button className="btn-submit" onClick={loadData} style={{ marginBottom: 20 }}>
-                            🔄 Recargar desde Google Sheets
-                        </button>
-
-                        <div className="admin-section">
-                            <h3>➕ Agregar Proyecto</h3>
-                            <AdminAddProject onAdd={handleAddProject} />
-                            <div className="admin-list">
-                                {projects.length === 0
-                                    ? <p style={{ color: '#999', fontSize: 12 }}>Sin proyectos aún</p>
-                                    : projects.map((p, i) => <div key={i} className="admin-item">{p}</div>)
-                                }
-                            </div>
-                        </div>
-
-                        <div className="admin-section">
-                            <h3>➕ Agregar Instalador</h3>
-                            <AdminAddInstaller onAdd={handleAddInstaller} />
-                            <div className="admin-list">
-                                {installers.length === 0
-                                    ? <p style={{ color: '#999', fontSize: 12 }}>Sin instaladores aún</p>
-                                    : installers.map((inst, i) => (
-                                        <div key={i} className="admin-item">
-                                            <span>{inst.nombre} <span className="pin-display">{inst.pin}</span></span>
-                                        </div>
-                                    ))
-                                }
-                            </div>
-                        </div>
-                    </div>
+                    <button className="admin-btn" onClick={() => setScreen('login')}>Cerrar</button>
                 )}
             </div>
-        );
-    }
 
-    function AdminAddProject({ onAdd }) {
-        const [val, setVal] = useState('');
-        return (
-            <div className="admin-input-group">
-                <input type="text" placeholder="Nombre del proyecto" value={val} onChange={e => setVal(e.target.value)} />
-                <button onClick={() => { if (val.trim()) { onAdd(val.trim()); setVal(''); } }}>Agregar</button>
-            </div>
-        );
-    }
+            {/* LOGIN */}
+            {screen === 'login' && (
+                <div style={{ marginTop: 40 }}>
+                    <div style={{ textAlign: 'center', marginBottom: 30 }}>
+                        <h2 style={{ fontSize: 24, marginBottom: 8 }}>Bienvenido</h2>
+                        <p style={{ color: '#888', fontSize: 14 }}>Ingresa tu PIN para comenzar</p>
+                    </div>
+                    <div className="form-group">
+                        <input type="password" placeholder="Ingresa tu PIN"
+                            value={pin} onChange={e => setPin(e.target.value)}
+                            onKeyPress={e => e.key === 'Enter' && handleLogin()}
+                            inputMode="numeric" maxLength="6" autoFocus />
+                    </div>
+                    {pinError && <div className="status error">{pinError}</div>}
+                    <button className="btn-submit" onClick={handleLogin}>Acceder</button>
+                </div>
+            )}
 
-    function AdminAddInstaller({ onAdd }) {
-        const [nombre, setNombre] = useState('');
-        const [pin, setPin] = useState('');
-        return (
-            <div className="admin-input-group">
-                <input type="text" placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
-                <input type="text" placeholder="PIN" value={pin}
-                    onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    maxLength="6" inputMode="numeric" />
-                <button onClick={() => {
-                    if (nombre.trim() && pin.length >= 4) { onAdd(nombre.trim(), pin); setNombre(''); setPin(''); }
-                }}>Agregar</button>
-            </div>
-        );
-    }
+            {/* FORMULARIO */}
+            {screen === 'form' && (
+                <div>
+                    <div style={{ padding: '10px 14px', background: '#e3f2fd', borderRadius: 8, marginBottom: 16, fontSize: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>👤 <strong>{currentInstaller.nombre}</strong></span>
+                        <button onClick={() => { setScreen('login'); setCurrentInstaller(null); resetForm(); }}
+                            style={{ background: 'none', border: 'none', color: '#1976d2', cursor: 'pointer', fontSize: 12 }}>
+                            Cerrar sesión
+                        </button>
+                    </div>
 
-    ReactDOM.render(<App />, document.getElementById('root'));
+                    {formError && <div className="status error">{formError}</div>}
+
+                    <div className="form-group">
+                        <label>Proyecto *</label>
+                        <select value={projectName} onChange={e => setProjectName(e.target.value)}>
+                            <option value="">Selecciona un proyecto</option>
+                            {projects.map((p, i) => <option key={i} value={p}>{p}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Tipo de Trabajo *</label>
+                        <select value={workType} onChange={e => setWorkType(e.target.value)}>
+                            <option>Desbaste de vano</option>
+                            <option>Desbaste de Firme</option>
+                            <option>Ajuste de Herraje</option>
+                            <option>Suministro y Colocación de Herraje</option>
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Descripción del Trabajo *</label>
+                        <textarea placeholder="Describe detalladamente el trabajo realizado..."
+                            value={description} onChange={e => setDescription(e.target.value)} rows={3} />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Nombre de quien Autoriza *</label>
+                        <input type="text" placeholder="Residente, jefe de obra o superintendente"
+                            value={clientName} onChange={e => setClientName(e.target.value)} />
+                    </div>
+
+                    <div className="form-group">
+                        <label>📸 Fotografías * <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>({photos.length}/10)</span></label>
+                        <div className="photos-grid">
+                            {photos.map((p, i) => (
+                                <div key={i} className="photo-thumb">
+                                    <img src={p} alt={`Foto ${i+1}`} />
+                                    <button className="delete-btn" onClick={() => removePhoto(i)}>×</button>
+                                </div>
+                            ))}
+                            {photos.length < 10 && (
+                                <label className="add-photo-btn">
+                                    <span>📷</span>
+                                    <span>Agregar</span>
+                                    <input type="file" accept="image/*" capture="environment"
+                                        multiple onChange={addPhoto} style={{ display: 'none' }} />
+                                </label>
+                            )}
+                        </div>
+                        <p style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>Toca 📷 para agregar fotos. Máximo 10.</p>
+                    </div>
+
+                    <div className="form-group">
+                        <label>✍️ Firma de quien Autoriza *</label>
+                        <SignaturePad onSign={setSignature} />
+                    </div>
+
+                    <button className="btn-submit" onClick={handleSubmit} disabled={submitting}>
+                        {submitting ? <><span className="spinner"></span>Guardando...</> : '💾 Guardar Orden de Trabajo'}
+                    </button>
+                    {syncMsg && <div className="sync-status">{syncMsg}</div>}
+                </div>
+            )}
+
+            {/* CONFIRMACIÓN */}
+            {screen === 'confirm' && lastOrder && (
+                <div>
+                    <div className="confirm-card">
+                        <div className="confirm-icon">✅</div>
+                        <h2>¡Orden Guardada!</h2>
+                        <p>La orden fue registrada exitosamente en el sistema.</p>
+                        <div className="confirm-details">
+                            <div><strong>Proyecto:</strong> {lastOrder.project}</div>
+                            <div><strong>Trabajo:</strong> {lastOrder.workType}</div>
+                            <div><strong>Instalador:</strong> {lastOrder.installer}</div>
+                            <div><strong>Autoriza:</strong> {lastOrder.clientName}</div>
+                            <div><strong>Fotos:</strong> {lastOrder.photos.length} foto(s)</div>
+                            <div><strong>Fecha:</strong> {new Date(lastOrder.timestamp).toLocaleString('es-MX')}</div>
+                        </div>
+                        <button className="btn-pdf" onClick={() => generatePDF(lastOrder)}>
+                            📄 Descargar PDF de la Orden
+                        </button>
+                        <button className="btn-submit" style={{ marginTop: 10 }}
+                            onClick={() => setScreen('form')}>
+                            + Nueva Orden
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ADMIN */}
+            {screen === 'admin' && (
+                <div>
+                    <button className="btn-submit" onClick={loadData} style={{ marginBottom: 20 }}>
+                        🔄 Recargar desde Google Sheets
+                    </button>
+
+                    <div className="admin-section">
+                        <h3>➕ Proyectos</h3>
+                        <AdminAddProject onAdd={async (n) => { await callScript('addProject', { nombre: n }); setProjects(p => [...p, n]); }} />
+                        <div className="admin-list">
+                            {projects.length === 0
+                                ? <p style={{ color: '#999', fontSize: 12, padding: 8 }}>Sin proyectos aún</p>
+                                : projects.map((p, i) => <div key={i} className="admin-item">{p}</div>)
+                            }
+                        </div>
+                    </div>
+
+                    <div className="admin-section">
+                        <h3>➕ Instaladores</h3>
+                        <AdminAddInstaller onAdd={async (n, p) => { await callScript('addInstaller', { nombre: n, pin: p }); setInstallers(x => [...x, { nombre: n, pin: p }]); }} />
+                        <div className="admin-list">
+                            {installers.length === 0
+                                ? <p style={{ color: '#999', fontSize: 12, padding: 8 }}>Sin instaladores aún</p>
+                                : installers.map((inst, i) => (
+                                    <div key={i} className="admin-item">
+                                        <span>{inst.nombre}</span>
+                                        <span className="pin-badge">{inst.pin}</span>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AdminAddProject({ onAdd }) {
+    const [val, setVal] = useState('');
+    const add = () => { if (val.trim()) { onAdd(val.trim()); setVal(''); } };
+    return (
+        <div className="admin-input-group">
+            <input type="text" placeholder="Nombre del proyecto" value={val}
+                onChange={e => setVal(e.target.value)} onKeyPress={e => e.key === 'Enter' && add()} />
+            <button onClick={add}>Agregar</button>
+        </div>
+    );
+}
+
+function AdminAddInstaller({ onAdd }) {
+    const [nombre, setNombre] = useState('');
+    const [pin, setPin] = useState('');
+    const add = () => {
+        if (nombre.trim() && pin.length >= 4) { onAdd(nombre.trim(), pin); setNombre(''); setPin(''); }
+    };
+    return (
+        <div className="admin-input-group">
+            <input type="text" placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
+            <input type="text" placeholder="PIN" value={pin} inputMode="numeric" maxLength="6"
+                onChange={e => setPin(e.target.value.replace(/\D/g,'').slice(0,6))} style={{ maxWidth: 80 }} />
+            <button onClick={add}>Agregar</button>
+        </div>
+    );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
 </script>
 </body>
 </html>
