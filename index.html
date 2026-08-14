@@ -102,6 +102,10 @@
         };
 
         const handlePinLogin = () => {
+            if (pin === '9107') {
+                setPin(''); setPinError(''); setScreen('admin');
+                return;
+            }
             const installer = installers.find(i => String(i.pin) === String(pin));
             if (installer) {
                 setCurrentInstaller(installer);
@@ -244,9 +248,11 @@
             <div className="container">
                 <div className="header">
                     <h1>📋 Ordenes de Trabajo</h1>
-                    <button className="admin-btn" onClick={() => setScreen(screen === 'admin' ? 'login' : 'admin')}>
-                        {screen === 'admin' ? 'Cerrar' : 'Admin'}
-                    </button>
+                    {screen === 'admin' && (
+                        <button className="admin-btn" onClick={() => setScreen('login')}>
+                            Cerrar
+                        </button>
+                    )}
                 </div>
 
                 {screen === 'login' && (
